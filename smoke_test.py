@@ -31,7 +31,10 @@ class Fake:
         self.logs = []
     def emit(self, message): self.logs.append(message)
 
+assert app.mouse_coordinates(150, 100, (200, 200), (100, 100)) == (75, 50)
+assert app.mouse_coordinates(150, 100, (200, 200), (200, 200)) == (150, 100)
 clicks = []
+app.pyautogui.size = lambda: (120, 100)
 app.pyautogui.screenshot = lambda: Screen()
 app.pyautogui.click = lambda x, y: clicks.append((x, y))
 job = Fake()
