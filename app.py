@@ -10,9 +10,12 @@ import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-# Ensure screenshot and mouse coordinates use the same pixel scale on Windows 7.
+# Prefer per-monitor DPI awareness on newer Windows; Windows 7 uses the fallback.
 try:
-    ctypes.windll.user32.SetProcessDPIAware()
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    except (AttributeError, OSError):
+        ctypes.windll.user32.SetProcessDPIAware()
 except (AttributeError, OSError):
     pass
 
@@ -49,6 +52,15 @@ def find_center(screen, template, threshold):
     if math.isfinite(score) and score >= threshold:
         return (pos[0] + w // 2, pos[1] + h // 2, score)
     return None
+
+
+def mouse_coordinates(x, y, screenshot_size, desktop_size):
+    width, height = screenshot_size
+    desktop_width, desktop_height = desktop_size
+    if min(width, height, desktop_width, desktop_height) <= 0:
+        raise ValueError('无法获取有效的屏幕尺寸。')
+    return (min(desktop_width - 1, int(x * desktop_width / width)),
+            min(desktop_height - 1, int(y * desktop_height / height)))
 
 
 class App:
@@ -158,8 +170,12 @@ class App:
                         if match:
                             if self.stop_event.is_set():
                                 return
-                            pyautogui.click(match[0], match[1])
-                            self.emit('已点击 ({}, {})，相似度 {:.3f}'.format(*match))
+                            desktop = pyautogui.size()
+                            shot_size = (frame.shape[1], frame.shape[0])
+                            x, y = mouse_coordinates(match[0], match[1], shot_size, desktop)
+                            self.emit('识别中心 ({}, {})；截图 {}×{}，鼠标坐标范围 {}×{}；点击 ({}, {})，相似度 {:.3f}'.format(
+                                match[0], match[1], shot_size[0], shot_size[1], desktop[0], desktop[1], x, y, match[2]))
+                            pyautogui.click(x, y)
                             break
                         if deadline is not None and time.monotonic() >= deadline:
                             raise TimeoutError('步骤 {} 超时，未找到图片 {}。'.format(step, index + 1))
