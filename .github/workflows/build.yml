@@ -15,8 +15,18 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Check 32-bit interpreter
         run: python -c "import struct; assert struct.calcsize('P') == 4"
+      - name: Test matching and click sequence
+        run: python smoke_test.py
       - name: Build executable
         run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name ImageClickerWin7 app.py
+      - name: Test EXE startup
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist/ImageClickerWin7.exe" -PassThru
+          Start-Sleep -Seconds 10
+          $p.Refresh()
+          if ($p.HasExited) { throw "EXE exited immediately with code $($p.ExitCode)" }
+          Stop-Process -Id $p.Id -Force
       - uses: actions/upload-artifact@v4
         with:
           name: ImageClickerWin7-x86
